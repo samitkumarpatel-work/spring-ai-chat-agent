@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ChatGPT WebSocket Chat</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      height: 100vh;
+      width: 100vw;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    #main-layout {
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+    #history {
+      width: 220px;
+      background: #e0e0e0;
+      border-right: 1px solid #ccc;
+      padding: 24px 8px;
+      box-sizing: border-box;
+      /* Placeholder for chat history */
+      overflow-y: auto;
+    }
+    .history-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .history-link {
+      display: block;
+      padding: 10px 16px;
+      margin-bottom: 6px;
+      border-radius: 8px;
+      color: #1976d2;
+      text-decoration: none;
+      background: transparent;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+    }
+    .history-link:hover, .history-link.active {
+      background: #bbdefb;
+      color: #0d47a1;
+    }
+    #chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: relative;
+      background: #f5f5f5;
+    }
+    #chat-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      max-width: 700px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 24px 0 90px 0;
+      box-sizing: border-box;
+      height: 100%;
+    }
+    #messages {
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 12px;
+      background: #fafafa;
+      margin-bottom: 0;
+      min-height: 0;
+    }
+    .message { margin-bottom: 18px; display: flex; }
+    .user { color: #1976d2; font-weight: bold; }
+    .assistant { color: #388e3c; font-weight: bold; }
+    .message.user-msg { justify-content: flex-end; }
+    .message.assistant-msg { justify-content: flex-start; }
+    .bubble {
+      max-width: 70%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      margin-left: 8px;
+      margin-right: 8px;
+      background: #e3f2fd;
+      color: #1976d2;
+      word-break: break-word;
+    }
+    .assistant-msg .bubble {
+      background: #e8f5e9;
+      color: #388e3c;
+    }
+    #input-form-wrapper {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      background: linear-gradient(to top, #f5f5f5 90%, transparent 100%);
+      padding-bottom: 18px;
+      z-index: 10;
+    }
+    #input-form {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 700px;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 4px 24px #0002;
+      padding: 16px 20px;
+      margin: 0 24px;
+      border: 1.5px solid #e3e3e3;
+      align-items: flex-end;
+    }
+    #input {
+      flex: 1;
+      min-height: 36px;
+      max-height: 120px;
+      resize: vertical;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1.5px solid #e3e3e3;
+      font-size: 1rem;
+      background: #fafbfc;
+      outline: none;
+      transition: border 0.2s;
+      box-shadow: 0 1px 2px #0001;
+    }
+    #input:focus {
+      border: 1.5px solid #1976d2;
+      background: #fff;
+    }
+    #send {
+      padding: 10px 22px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #1976d2 60%, #42a5f5 100%);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #1976d220;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+    #send:disabled {
+      background: #90caf9;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    /* Hide default input outline on button click */
+    #send:focus { outline: none; }
+    pre, code { background: #eee; border-radius: 4px; padding: 2px 6px; }
+    @media (max-width: 900px) {
+      #main-layout { flex-direction: column; }
+      #history { width: 100%; min-height: 60px; border-right: none; border-bottom: 1px solid #ccc; }
+      #chat-area { height: calc(100vh - 60px); }
+      #chat-container { padding: 12px 0 90px 0; }
+      #input-form { margin: 0 8px; }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div id="main-layout">
+    <div id="history">
+      <ul class="history-list" id="history-list">
+        <!-- Chat history links will be injected here -->
+      </ul>
+    </div>
+    <div id="chat-area">
+      <div id="chat-container">
+        <div id="messages"></div>
+      </div>
+      <div id="input-form-wrapper">
+        <form id="input-form" autocomplete="off">
+          <textarea id="input" placeholder="Type your message..." required rows="1"></textarea>
+          <button id="send" type="submit">Send</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script>
+    const ws = new WebSocket(`ws://localhost:8080/ws/chat`);
+    const messagesDiv = document.getElementById('messages');
+    const inputForm = document.getElementById('input-form');
+    const input = document.getElementById('input');
+    let assistantBuffer = '';
+    let assistantMsgDiv = null;
+
+    function appendMessage(role, content, isMarkdown = false) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${role}-msg`;
+      let bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      if (isMarkdown) {
+        bubble.innerHTML = `<span class="markdown">${marked.parse(content)}</span>`;
+      } else {
+        bubble.textContent = content;
+      }
+      msgDiv.appendChild(bubble);
+      messagesDiv.appendChild(msgDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      return msgDiv;
+    }
+
+    ws.onopen = () => {
+      // ...existing code...
+    };
+
+    ws.onmessage = (event) => {
+      // Assume streaming: each message is a chunk of markdown text
+      if (!assistantMsgDiv) {
+        assistantBuffer = '';
+        assistantMsgDiv = appendMessage('assistant', '', true);
+      }
+      assistantBuffer += event.data;
+      assistantMsgDiv.querySelector('.markdown').innerHTML = marked.parse(assistantBuffer);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    };
+
+    ws.onclose = () => {
+      // ...existing code...
+    };
+
+    ws.onerror = (err) => {
+      // ...existing code...
+    };
+
+    // Auto-grow textarea like ChatGPT
+    input.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+    });
+
+    inputForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text || ws.readyState !== WebSocket.OPEN) return;
+      appendMessage('user', text);
+      ws.send(text);
+      input.value = '';
+      input.style.height = 'auto'; // Reset height after send
+      // Prepare for next assistant message
+      assistantBuffer = '';
+      assistantMsgDiv = null;
+    });
+
+    // --- Chat history sidebar logic ---
+    const historyList = document.getElementById('history-list');
+    let activeHistoryId = null;
+
+    function renderHistory(history) {
+      historyList.innerHTML = '';
+      // Add static "+ new chat" link at the top
+      const newChatLi = document.createElement('li');
+      const newChatA = document.createElement('a');
+      newChatA.className = 'history-link';
+      newChatA.textContent = '+ new chat';
+      newChatA.href = '#';
+      newChatA.onclick = (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.history-link').forEach(link => link.classList.remove('active'));
+        activeHistoryId = null;
+        messagesDiv.innerHTML = '';
+        // You can add logic here to start a new chat
+      };
+      newChatLi.appendChild(newChatA);
+      historyList.appendChild(newChatLi);
+
+      history.forEach(id => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.className = 'history-link' + (id === activeHistoryId ? ' active' : '');
+        a.textContent = id;
+        a.href = '#';
+        a.onclick = async (e) => {
+          e.preventDefault();
+          document.querySelectorAll('.history-link').forEach(link => link.classList.remove('active'));
+          a.classList.add('active');
+          activeHistoryId = id;
+          // Fetch and render chat for this session id
+          await loadSessionChat(id);
+        };
+        li.appendChild(a);
+        historyList.appendChild(li);
+      });
+    }
+
+    async function loadSessionChat(sessionId) {
+      try {
+        const res = await fetch(`http://localhost:8080/chat-history/${sessionId}`);
+        if (!res.ok) return;
+        const messages = await res.json();
+        messagesDiv.innerHTML = '';
+        messages.forEach(msg => {
+          const role = (msg.messageType || (msg.metadata && msg.metadata.messageType) || '').toLowerCase();
+          appendMessage(role === 'assistant' ? 'assistant' : 'user', msg.text, true);
+        });
+        // Reset assistant message buffer for streaming
+        assistantBuffer = '';
+        assistantMsgDiv = null;
+      } catch (e) {
+        // Optionally handle error
+      }
+    }
+
+    async function fetchHistory() {
+      try {
+        const res = await fetch('http://localhost:8080/chat-history');
+        if (!res.ok) return;
+        const history = await res.json();
+        renderHistory(history);
+      } catch (e) {
+        // Optionally handle error
+      }
+    }
+
+    fetchHistory();
+    // Optionally, refresh history every so often:
+    // setInterval(fetchHistory, 60000);
+  </script>
+</body>
+</html>

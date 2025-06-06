@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: spring-ai-chat-agent
+  datasource:
+    url: jdbc:postgresql://localhost:5432/spring_ai_chat_agent
+    username: root
+    password: root
+  ai:
+    azure:
+      openai:
+        api-key: ${AZURE_OPENAI_API_KEY:}
+        endpoint: ${AZURE_OPENAI_ENDPOINT:}
+        chat:
+          options:
+            model: gpt-4o-mini
+            deployment-name: gpt-4o-mini
+        embedding:
+          options:
+            model: text-embedding-3-small
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: "*"
