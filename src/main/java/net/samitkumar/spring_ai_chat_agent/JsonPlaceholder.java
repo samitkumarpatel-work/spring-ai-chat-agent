@@ -8,7 +8,6 @@ import org.springframework.web.reactive.function.client.support.WebClientAdapter
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
-import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -25,7 +24,7 @@ public class JsonPlaceholder {
     }
 }
 
-record User(String id, String name, String username, String email, Address address, String phone, String website, Company company) {
+record User(String id, String name, String username, String email, Address address, String phone, String website, Company company, String aboutme) {
     record Address(String street, String suite, String city, String zipcode, Geo geo) {
         record Geo(String lat, String lng) {}
     }

@@ -3,7 +3,6 @@ package net.samitkumar.spring_ai_chat_agent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.PromptChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +12,7 @@ import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping;
 import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
+import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
@@ -20,30 +20,24 @@ import java.util.Map;
 
 @Configuration
 public class WebSocket {
-    private final PromptHandler promptHandler;
-
-    public WebSocket(PromptHandler promptHandler) {
-        this.promptHandler = promptHandler;
-    }
 
     @Bean
-    public HandlerMapping handlerMapping() {
+    public HandlerMapping handlerMapping(PromptHandler promptHandler) {
         Map<String, WebSocketHandler> map = new HashMap<>();
         map.put("/ws/chat", promptHandler);
         int order = -1; // before annotated controllers
         return new SimpleUrlHandlerMapping(map, order);
     }
+
 }
 
 @Component
 class PromptHandler implements WebSocketHandler {
     private final ChatClient chatClient;
     private final Logger log = LoggerFactory.getLogger(PromptHandler.class);
-    private final PromptChatMemoryAdvisor promptChatMemoryAdvisor;
 
-    public PromptHandler(ChatClient chatClient, PromptChatMemoryAdvisor promptChatMemoryAdvisor) {
+    public PromptHandler(ChatClient chatClient) {
         this.chatClient = chatClient;
-        this.promptChatMemoryAdvisor = promptChatMemoryAdvisor;
     }
 
     @Override

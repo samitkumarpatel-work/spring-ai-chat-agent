@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ChatGPT WebSocket Chat</title>
+  <title>Spring AI powered Chat</title>
   <style>
     html, body {
       height: 100%;
@@ -25,7 +25,8 @@
       width: 100vw;
     }
     #history {
-      width: 220px;
+      width: 180px;
+      /* Slightly reduce sidebar width for more chat space */
       background: #e0e0e0;
       border-right: 1px solid #ccc;
       padding: 24px 8px;
@@ -52,6 +53,7 @@
     .history-link:hover, .history-link.active {
       background: #bbdefb;
       color: #0d47a1;
+      border: 1px solid green;
     }
     #chat-area {
       flex: 1;
@@ -66,11 +68,11 @@
       display: flex;
       flex-direction: column;
       justify-content: flex-end;
-      max-width: 700px;
-      margin: 0 auto;
+      max-width: none;
+      margin: 0;
       width: 100%;
-      /* Remove bottom padding to avoid overlap with input */
-      padding: 24px 0 0 0;
+      /* Remove top padding for more vertical space */
+      padding: 0 0 0 0;
       box-sizing: border-box;
       height: 100%;
     }
@@ -80,12 +82,11 @@
       overflow-y: auto;
       border: 1px solid #ddd;
       border-radius: 6px;
-      padding: 12px;
+      /* Reduce top padding for more content space */
+      padding: 4px 12px 110px 12px;
       background: #fafafa;
       margin-bottom: 0;
       min-height: 0;
-      /* Add extra bottom padding to prevent input overlap */
-      padding-bottom: 110px;
       box-sizing: border-box;
     }
     .message { margin-bottom: 18px; display: flex; }
@@ -94,8 +95,8 @@
     .message.user-msg { justify-content: flex-end; }
     .message.assistant-msg { justify-content: flex-start; }
     .bubble {
-      max-width: 70%;
-      padding: 10px 14px;
+      max-width: 90%; /* Allow bubbles to be wider */
+      padding: 10px 18px;
       border-radius: 16px;
       margin-left: 8px;
       margin-right: 8px;
@@ -109,7 +110,7 @@
     }
     #input-form-wrapper {
       position: fixed;
-      left: 220px;
+      left: 180px; /* match #history width */
       right: 0;
       bottom: 0;
       width: auto;
@@ -123,7 +124,7 @@
       display: flex;
       gap: 8px;
       width: 100%;
-      max-width: 700px;
+      max-width: none;
       background: #fff;
       border-radius: 18px;
       box-shadow: 0 4px 24px #0002;
@@ -189,7 +190,7 @@
           <li>
             <a href="#" class="history-link"
                :class="{active: !activeHistoryId}"
-               @click.prevent="startNewChat">+ new chat</a>
+               @click.prevent="startNewChat">+ New Chat</a>
           </li>
           <li v-for="id in historyList" :key="id">
             <a href="#" class="history-link"
@@ -200,7 +201,7 @@
       </div>
       <div id="chat-area">
         <div id="chat-container">
-          <div id="messages">
+          <div id="messages" ref="messagesRef">
             <div v-for="(msg, idx) in messages" :key="idx"
                  class="message"
                  :class="msg.role === 'assistant' ? 'assistant-msg' : 'user-msg'">
@@ -227,7 +228,7 @@
     </div>
   </div>
   <script>
-    const { createApp, ref, reactive, onMounted, nextTick } = Vue;
+    const { createApp, ref, reactive, onMounted, nextTick, watch } = Vue;
 
     createApp({
       setup() {
@@ -240,6 +241,7 @@
         let assistantBuffer = '';
         let streaming = false;
         const inputRef = ref(null);
+        const messagesRef = ref(null);
 
         // Markdown rendering
         function renderMarkdown(text) {
@@ -275,6 +277,8 @@
         async function selectHistory(id) {
           activeHistoryId.value = id;
           await loadSessionChat(id);
+
+           console.log('activeHistoryId', activeHistoryId.value);
         }
 
         // Start new chat
@@ -287,7 +291,7 @@
 
         // WebSocket logic
         function connectWS() {
-          ws = new WebSocket(`ws://localhost:8080/ws/chat`);
+          ws = new WebSocket(`ws://localhost:8080/ws/chat?sessionId=${activeHistoryId.value || ''}`);
           ws.onopen = () => { wsConnected.value = true; };
           ws.onclose = () => { wsConnected.value = false; };
           ws.onerror = () => { wsConnected.value = false; };
@@ -321,7 +325,19 @@
           el.style.height = Math.min(el.scrollHeight, 120) + 'px';
         }
 
+        // Auto-scroll to bottom when messages change
+        watch(messages, () => {
+          nextTick(() => {
+            if (messagesRef.value) {
+              messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
+            }
+          });
+        });
+
         onMounted(() => {
+          setInterval(() => {
+            fetchHistory();
+          }, 30000); // Ping every 30 seconds
           fetchHistory();
           connectWS();
         });
@@ -333,6 +349,7 @@
           input,
           wsConnected,
           inputRef,
+          messagesRef,
           renderMarkdown,
           selectHistory,
           startNewChat,
