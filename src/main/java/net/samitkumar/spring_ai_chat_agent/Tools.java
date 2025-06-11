@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.stereotype.Component;
 
@@ -42,14 +41,26 @@ public class Tools {
         return jsonPlaceholderClient.userById(id);
     }
 
-    @Tool(description = "Fetch user aboutme column data by given name")
-    public List<Document> getAbout(String name) {
-        logger.info("Fetching about name: {}", name);
-        return vectorStore.similaritySearch(name)
+    @Tool(description = "Fetch user aboutme by user full name")
+    public List<Document> getAboutByFullName(String fullName) {
+        logger.info("Fetching getAboutByFullName: {}", fullName);
+        return vectorStore.similaritySearch(fullName)
                 .stream()
                 .filter(document -> {
                     var dInS = (String)document.getMetadata().get("fullname");
-                    return Objects.nonNull(dInS) && dInS.matches("(?i).*" + name + ".*");
+                    return Objects.nonNull(dInS) && dInS.matches("(?i).*" + fullName + ".*");
+                })
+                .toList();
+    }
+
+    @Tool(description = "Fetch user aboutme by user username")
+    public List<Document> getAboutByUsername(String username) {
+        logger.info("Fetching getAboutByUsername: {}", username);
+        return vectorStore.similaritySearch(username)
+                .stream()
+                .filter(document -> {
+                    var dInS = (String)document.getMetadata().get("username");
+                    return Objects.nonNull(dInS) && dInS.matches("(?i).*" + username + ".*");
                 })
                 .toList();
     }

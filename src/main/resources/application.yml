@@ -1,3 +1,4 @@
+
 spring:
   application:
     name: spring-ai-chat-agent
@@ -31,3 +32,5 @@ management:
     web:
       exposure:
         include: "*"
+server:
+  shutdown: immediate

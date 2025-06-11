@@ -25,8 +25,7 @@
       width: 100vw;
     }
     #history {
-      width: 180px;
-      /* Slightly reduce sidebar width for more chat space */
+      width: 260px;
       background: #e0e0e0;
       border-right: 1px solid #ccc;
       padding: 24px 8px;
@@ -69,9 +68,8 @@
       flex-direction: column;
       justify-content: flex-end;
       max-width: none;
-      margin: 0;
       width: 100%;
-      /* Remove top padding for more vertical space */
+      margin: 0;
       padding: 0 0 0 0;
       box-sizing: border-box;
       height: 100%;
@@ -101,16 +99,16 @@
       margin-left: 8px;
       margin-right: 8px;
       background: #e3f2fd;
-      color: #1976d2;
+      color: #000; /* Set user message text to black */
       word-break: break-word;
     }
     .assistant-msg .bubble {
       background: #e8f5e9;
-      color: #388e3c;
+      color: #000; /* Set assistant message text to black */
     }
     #input-form-wrapper {
       position: fixed;
-      left: 180px; /* match #history width */
+      left: 260px; /* match #history width */
       right: 0;
       bottom: 0;
       width: auto;
@@ -170,6 +168,23 @@
     }
     #send:focus { outline: none; }
     pre, code { background: #eee; border-radius: 4px; padding: 2px 6px; }
+    .ws-error-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      background: #ff5252;
+      color: #fff;
+      text-align: center;
+      padding: 12px 0;
+      font-weight: bold;
+      z-index: 1000;
+      box-shadow: 0 2px 8px #0003;
+      letter-spacing: 0.5px;
+    }
+    body.has-ws-error {
+      padding-top: 48px;
+    }
     @media (max-width: 900px) {
       #main-layout { flex-direction: column; }
       #history { width: 100%; min-height: 60px; border-right: none; border-bottom: 1px solid #ccc; }
@@ -182,8 +197,11 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
-<body>
+<body :class="{'has-ws-error': wsError}">
   <div id="app">
+    <div v-if="wsError" class="ws-error-banner">
+      WebSocket connection error. Please check your server or network.
+    </div>
     <div id="main-layout">
       <div id="history">
         <ul class="history-list">
@@ -237,12 +255,18 @@
         const messages = ref([]);
         const input = ref('');
         const wsConnected = ref(false);
+        const wsError = ref(false);
         let ws = null;
         let assistantBuffer = '';
         let streaming = false;
         const inputRef = ref(null);
         const messagesRef = ref(null);
+        let wsReconnectInterval = null;
 
+        function generateUUID() {
+          return Math.random().toString(36).substring(2, 10) + '-' + Math.random().toString(36).substring(2, 10);
+        }
+        
         // Markdown rendering
         function renderMarkdown(text) {
           return marked.parse(text || '');
@@ -291,10 +315,29 @@
 
         // WebSocket logic
         function connectWS() {
-          ws = new WebSocket(`ws://localhost:8080/ws/chat?sessionId=${activeHistoryId.value || ''}`);
-          ws.onopen = () => { wsConnected.value = true; };
-          ws.onclose = () => { wsConnected.value = false; };
-          ws.onerror = () => { wsConnected.value = false; };
+          if (ws) {
+            ws.close();
+            ws = null;
+          }
+          ws = new WebSocket(`ws://localhost:8080/ws/chat`);
+          ws.onopen = () => { 
+            wsConnected.value = true;
+            wsError.value = false;
+            if (wsReconnectInterval) {
+              clearInterval(wsReconnectInterval);
+              wsReconnectInterval = null;
+            }
+          };
+          ws.onclose = () => { 
+            wsConnected.value = false;
+            wsError.value = true;
+            scheduleReconnect();
+          };
+          ws.onerror = () => { 
+            wsConnected.value = false;
+            wsError.value = true;
+            scheduleReconnect();
+          };
           ws.onmessage = (event) => {
             if (!streaming) {
               assistantBuffer = '';
@@ -303,14 +346,32 @@
             }
             assistantBuffer += event.data;
             messages.value[messages.value.length - 1].text = assistantBuffer;
+            // Scroll to bottom while streaming
+            nextTick(() => {
+              if (messagesRef.value) {
+                messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
+              }
+            });
           };
+        }
+
+        function scheduleReconnect() {
+          if (!wsReconnectInterval) {
+            wsReconnectInterval = setInterval(() => {
+              if (!wsConnected.value) {
+                connectWS();
+              }
+            }, 5000);
+          }
         }
 
         // Send user message
         function sendMessage() {
           if (!input.value.trim() || !wsConnected.value) return;
           messages.value.push({ role: 'user', text: input.value });
-          ws.send(input.value);
+          activeHistoryId.value = activeHistoryId.value || generateUUID();
+          const payload = JSON.stringify({message: input.value, contextId: activeHistoryId.value});
+          ws.send(payload);
           input.value = '';
           assistantBuffer = '';
           streaming = false;
@@ -348,6 +409,7 @@
           messages,
           input,
           wsConnected,
+          wsError,
           inputRef,
           messagesRef,
           renderMarkdown,

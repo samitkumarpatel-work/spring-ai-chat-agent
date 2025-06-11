@@ -1,5 +1,7 @@
 package net.samitkumar.spring_ai_chat_agent;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -13,6 +15,7 @@ import org.springframework.web.reactive.socket.WebSocketHandler;
 import org.springframework.web.reactive.socket.WebSocketMessage;
 import org.springframework.web.reactive.socket.WebSocketSession;
 import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.HashMap;
@@ -47,13 +50,21 @@ class PromptHandler implements WebSocketHandler {
                         .receive()
                         .map(WebSocketMessage::getPayloadAsText)
                         .doOnNext(message -> log.info("Prompt message: {}", message))
-                        .flatMap(message -> chatClient
-                                .prompt()
-                                .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, session.getId()))
-                                .user(message)
-                                .stream()
-                                .content()
-                                .map(session::textMessage))
+                        .flatMap(message -> {
+                            try {
+                                var parsableMessage = new ObjectMapper().readValue(message, Map.class);
+                                System.out.println("###Parsed message: " + parsableMessage);
+                                return chatClient
+                                        .prompt()
+                                        .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, parsableMessage.get("contextId")))
+                                        .user((String)parsableMessage.get("message"))
+                                        .stream()
+                                        .content()
+                                        .map(session::textMessage);
+                            } catch (JsonProcessingException e) {
+                                return Flux.error(new RuntimeException(e));
+                            }
+                        })
         );
     }
 }

@@ -6,9 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.azure.openai.AzureOpenAiEmbeddingModel;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.reader.ExtractedTextFormatter;
-import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
-import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,8 +13,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
-
-import java.util.Arrays;
 
 @Configuration
 public class VectorConfiguration {
@@ -65,13 +60,13 @@ public class VectorConfiguration {
             vectorStore.add(ds);
 
             //finding documents Test
-            vectorStore.similaritySearch("Patricia")
+            /*vectorStore.similaritySearch("Patricia")
                     .stream()
                     .filter(document -> {
                         var dInS = (String)document.getMetadata().get("fullname");
                         return dInS.contains("Patricia");
                     })
-                    .forEach(document -> logger.info("### Document: Score= {} , data= {}", document.getScore(), document.getText()));
+                    .forEach(document -> logger.info("### Document: Score= {} , data= {}", document.getScore(), document.getText()));*/
 
 
         };
