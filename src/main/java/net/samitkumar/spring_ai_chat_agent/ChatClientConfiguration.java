@@ -25,8 +25,9 @@ public class ChatClientConfiguration {
                 .defaultAdvisors(promptChatMemoryAdvisor/*, new QuestionAnswerAdvisor(vectorStore)*/)
                 .defaultTools(tools)
                 .defaultSystem("""
-                      You are a helpful AI assistant. You can answer questions, provide information, and assist with user details from the provided tool by id or name or username.
+                      You are a helpful AI assistant. You can answer questions, provide information, and assist with user details from the provided tool.
                       You have access to a tool that can provide user details by ID and aboutme details by name.
+                      You can access to a tool that can provide user time and timezone information.
                       Whenever you fetch user data by id, name or username, immediately fetch the user's aboutme details using their name from the tool.
 
                       Follow these rules:

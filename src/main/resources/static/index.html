@@ -283,9 +283,9 @@
         }
 
         // Fetch and display chat for a session
-        async function loadSessionChat(sessionId) {
+        async function loadSessionChat(contextId) {
           try {
-            const res = await fetch(`http://localhost:8080/chat-history/${sessionId}`);
+            const res = await fetch(`http://localhost:8080/chat-history/${contextId}`);
             if (!res.ok) return;
             const data = await res.json();
             messages.value = (Array.isArray(data) ? data : []).map(msg => ({
@@ -301,8 +301,6 @@
         async function selectHistory(id) {
           activeHistoryId.value = id;
           await loadSessionChat(id);
-
-           console.log('activeHistoryId', activeHistoryId.value);
         }
 
         // Start new chat
@@ -311,6 +309,7 @@
           messages.value = [];
           assistantBuffer = '';
           streaming = false;
+          fetchHistory()
         }
 
         // WebSocket logic
@@ -400,14 +399,15 @@
           (newVal) => {
             if (!newVal) {
               fetchHistory();
-            } 
+              messages.value = [];
+            }
           }
         )
 
         onMounted(() => {
           setInterval(() => {
             fetchHistory();
-          }, 30000); // Ping every 30 seconds
+          }, 5000); // Ping every 30 seconds
           fetchHistory();
           connectWS();
         });
