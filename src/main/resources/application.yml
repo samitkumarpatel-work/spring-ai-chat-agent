@@ -23,6 +23,9 @@ spring:
         repository:
           jdbc:
             initialize-schema: always
+  threads:
+    virtual:
+      enabled: true
 
 management:
   endpoint:
