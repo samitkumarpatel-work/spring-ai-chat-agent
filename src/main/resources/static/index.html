@@ -83,7 +83,7 @@
       /* Reduce top padding for more content space */
       padding: 4px 12px 110px 12px;
       background: #fafafa;
-      margin-bottom: 0;
+      margin-bottom: 90px; /* Add gap so chat is not hidden behind input */
       min-height: 0;
       box-sizing: border-box;
     }
@@ -101,6 +101,9 @@
       background: #e3f2fd;
       color: #000; /* Set user message text to black */
       word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+      display: block; /* Ensure block for wrapping */
     }
     .assistant-msg .bubble {
       background: #e8f5e9;
