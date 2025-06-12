@@ -24,4 +24,4 @@ Vector Database are specialized databases designed to store and retrieve high-di
 ### The Model Context Protocol (MCP)
 Model Context Protocol is a standardized protocol that enables AI models to interact with external tools and resources in a structured way. It supports multiple transport mechanisms to provide flexibility across different environments.
 
-![MCP](mcp.png)
+![MCP](mcp-v2.png)
